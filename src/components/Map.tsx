@@ -37,7 +37,7 @@ const useMouseDragging = (dragTargetRef: React.RefObject<HTMLElement>) => {
     endCoords.current = null;
   });
 
-  const onDrawStart = useCallback(
+  const handleMouseDown = useCallback(
     (e: React.MouseEvent<HTMLElement>) => {
       if (!dragTargetRef.current) return;
       isDragging.current = true;
@@ -59,7 +59,30 @@ const useMouseDragging = (dragTargetRef: React.RefObject<HTMLElement>) => {
     [dragTargetRef]
   );
 
-  const onParentMouseMove = useCallback(
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent<HTMLElement>) => {
+      if (!dragTargetRef.current) return;
+      isDragging.current = true;
+      const canvasPos = dragTargetRef.current.getBoundingClientRect();
+
+      const touch = e.touches[0];
+      const x = touch.clientX - canvasPos.left;
+      const y = touch.clientY - canvasPos.top;
+      if (startCoords.current) {
+        startCoords.current.x = x;
+        startCoords.current.y = y;
+      } else {
+        startCoords.current = { x, y };
+      }
+
+      if (endCoords.current) {
+        endCoords.current = null;
+      }
+    },
+    [dragTargetRef]
+  );
+
+  const handleParentMouseMove = useCallback(
     (e: React.MouseEvent<HTMLElement>) => {
       if (!dragTargetRef.current) return;
       const canvasPos = dragTargetRef.current.getBoundingClientRect();
@@ -69,8 +92,19 @@ const useMouseDragging = (dragTargetRef: React.RefObject<HTMLElement>) => {
     [dragTargetRef]
   );
 
+  const handleParentTouchMove = useCallback(
+    (e: React.TouchEvent<HTMLElement>) => {
+      if (!dragTargetRef.current) return;
+      const canvasPos = dragTargetRef.current.getBoundingClientRect();
+      const touch = e.touches[0];
+      mouseCoords.current.x = touch.clientX - canvasPos.left;
+      mouseCoords.current.y = touch.clientY - canvasPos.top;
+    },
+    [dragTargetRef]
+  );
+
   useEffect(() => {
-    function onDrawEnd(e: MouseEvent) {
+    function handleMouseUp(e: MouseEvent) {
       if (!dragTargetRef.current) return;
       if (!isDragging.current) {
         startCoords.current = null;
@@ -89,9 +123,35 @@ const useMouseDragging = (dragTargetRef: React.RefObject<HTMLElement>) => {
       }
     }
 
-    document.addEventListener("mouseup", onDrawEnd, { passive: true });
-    return () => document.removeEventListener("mouseup", onDrawEnd);
+    document.addEventListener("mouseup", handleMouseUp, { passive: true });
+    return () => document.removeEventListener("mouseup", handleMouseUp);
   }, [dragTargetRef]);
+
+  useEffect(() => {
+    function handleTouchEnd(e: TouchEvent) {
+      if (!dragTargetRef.current) return;
+      if (!isDragging.current) {
+        startCoords.current = null;
+        return;
+      }
+      isDragging.current = false;
+
+      const { x, y } = mouseCoords.current;
+      if (endCoords.current) {
+        endCoords.current.x = x;
+        endCoords.current.y = y;
+      } else {
+        endCoords.current = { x, y };
+      }
+    }
+
+    document.addEventListener("touchend", handleTouchEnd, { passive: true });
+    document.addEventListener("touchcancel", handleTouchEnd, { passive: true });
+    return () => {
+      document.removeEventListener("touchend", handleTouchEnd);
+      document.removeEventListener("touchcancel", handleTouchEnd);
+    };
+  }, [dragTargetRef, mouseCoords]);
 
   return useMemo(
     () => ({
@@ -100,14 +160,24 @@ const useMouseDragging = (dragTargetRef: React.RefObject<HTMLElement>) => {
       mouseCoords,
 
       dragTargetProps: {
-        onMouseDown: onDrawStart,
+        onMouseDown: handleMouseDown,
+        onTouchStart: handleTouchStart,
       },
 
       dragParentProps: {
-        onMouseMove: onParentMouseMove,
+        onMouseMove: handleParentMouseMove,
+        onTouchMove: handleParentTouchMove,
       },
     }),
-    [startCoords, endCoords, mouseCoords, onDrawStart, onParentMouseMove]
+    [
+      startCoords,
+      endCoords,
+      mouseCoords,
+      handleMouseDown,
+      handleTouchStart,
+      handleParentMouseMove,
+      handleParentTouchMove,
+    ]
   );
 };
 
@@ -147,14 +217,6 @@ export const Map = ({ mapName, gameMode }: MapProps) => {
       <div>{gameMode.mapGameModeKey}</div>
 
       <div className={styles.imageContainer}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        {/* <img
-          src={`/maps/${encodeURIComponent(gameMode.mapGameModeKey)}.png`}
-          className={styles.mapImage}
-          alt={`[${gameMode.gameMode}] ${mapName}`}
-          width={532}
-          height={532}
-        /> */}
         <Image
           src={`/maps/${encodeURIComponent(gameMode.mapGameModeKey)}.png`}
           className={styles.mapImage}
