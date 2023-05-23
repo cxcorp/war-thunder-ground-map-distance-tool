@@ -13,11 +13,16 @@
 }
 
 .container {
-  padding: 6rem;
+  padding: 6rem 0;
   min-height: 100vh;
   min-width: 545px;
   row-gap: 2rem;
-  overflow-x: scroll;
+}
+
+@media (min-width: 700px) {
+  .container {
+    padding: 6rem;
+  }
 }
 
 .searchBar {
