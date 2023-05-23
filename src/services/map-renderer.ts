@@ -47,6 +47,84 @@ function liangBarsky(
 
 /**
  * Draws a text string on a canvas context with a semi-transparent background.
+ * The text is placed along the 'start' to 'end' line, keeping the text
+ * box from occluding the 'end' point by offsetting it towards the
+ * direction of the line.
+ *
+ * If the 'end' point is outside the canvas, the text is placed near the
+ * intersection of the line with the canvas edge, using the Liang-Barsky
+ * algorithm, and ensuring the text box is fully visible and padded from
+ * the intersection.
+ */
+function drawTextAheadOfEnd(
+  ctx: CanvasRenderingContext2D,
+  start: Coords,
+  end: Coords,
+  text: string
+) {
+  const metrics = getTextBBox(ctx, text);
+  const edgePadding = 30; // The distance from 'end' to the nearest edge of the textbox
+  const textPadding = 5; // padding around the text inside the box
+
+  // Calculate the direction of the line from start to end
+  const dirX = end.x - start.x;
+  const dirY = end.y - start.y;
+
+  // Normalize the direction
+  const len = Math.sqrt(dirX * dirX + dirY * dirY);
+  const dirNormX = dirX / len;
+  const dirNormY = dirY / len;
+
+  let offsetX, offsetY;
+
+  // Check if 'end' point is outside the canvas
+  if (
+    end.x < 0 ||
+    end.y < 0 ||
+    end.x > ctx.canvas.width ||
+    end.y > ctx.canvas.height
+  ) {
+    // If 'end' point is outside, find intersection point using Liang-Barsky algorithm
+    const intersection = liangBarsky(
+      ctx.canvas.width,
+      ctx.canvas.height,
+      start,
+      end
+    );
+    offsetX = intersection.x + dirNormX * (metrics.width / 2 + edgePadding);
+    offsetY = intersection.y + dirNormY * (metrics.height / 2 + edgePadding);
+  } else {
+    // If 'end' point is inside, calculate the offset as usual
+    offsetX = end.x + dirNormX * (metrics.width / 2 + edgePadding);
+    offsetY = end.y + dirNormY * (metrics.height / 2 + edgePadding);
+  }
+
+  // Clamp the position within the canvas, taking into account the edgePadding
+  const posX = Math.max(
+    Math.min(offsetX, ctx.canvas.width - metrics.width / 2 - edgePadding),
+    metrics.width / 2 + edgePadding
+  );
+  const posY = Math.max(
+    Math.min(offsetY, ctx.canvas.height - metrics.height / 2 - edgePadding),
+    metrics.height / 2 + edgePadding
+  );
+
+  // Draw the background rectangle with textPadding
+  ctx.fillStyle = "rgba(0,0,0,0.5)";
+  ctx.fillRect(
+    posX - metrics.width / 2 - textPadding,
+    posY - metrics.height / 2 - textPadding,
+    metrics.width + 2 * textPadding,
+    metrics.height + 2 * textPadding
+  );
+
+  // Draw the text
+  ctx.fillStyle = "white";
+  ctx.fillText(text, posX, posY);
+}
+
+/**
+ * Draws a text string on a canvas context with a semi-transparent background.
  * The text is placed to the right of the 'end' point along the line from 'start' to 'end'.
  *
  * If the 'end' point is outside the canvas, the text is placed near the
@@ -54,84 +132,12 @@ function liangBarsky(
  * algorithm, and ensuring the text box is fully visible and padded from
  * the intersection.
  */
-function drawText(
+function drawTextRightOfEnd(
   ctx: CanvasRenderingContext2D,
   start: Coords,
   end: Coords,
   text: string
 ) {
-  /**
-   * Draws a text string on a canvas context with a semi-transparent background.
-   * The text is placed along the 'start' to 'end' line, keeping the text
-   * box from occluding the 'end' point by offsetting it towards the
-   * direction of the line.
-   *
-   * If the 'end' point is outside the canvas, the text is placed near the
-   * intersection of the line with the canvas edge, using the Liang-Barsky
-   * algorithm, and ensuring the text box is fully visible and padded from
-   * the intersection.
-   */
-  // const metrics = getTextBBox(ctx, text);
-  // const edgePadding = 20; // The distance from 'end' to the nearest edge of the textbox
-  // const textPadding = 5; // padding around the text inside the box
-
-  // // Calculate the direction of the line from start to end
-  // const dirX = end.x - start.x;
-  // const dirY = end.y - start.y;
-
-  // // Normalize the direction
-  // const len = Math.sqrt(dirX * dirX + dirY * dirY);
-  // const dirNormX = dirX / len;
-  // const dirNormY = dirY / len;
-
-  // let offsetX, offsetY;
-
-  // // Check if 'end' point is outside the canvas
-  // if (
-  //   end.x < 0 ||
-  //   end.y < 0 ||
-  //   end.x > ctx.canvas.width ||
-  //   end.y > ctx.canvas.height
-  // ) {
-  //   // If 'end' point is outside, find intersection point using Liang-Barsky algorithm
-  //   const intersection = liangBarsky(
-  //     ctx.canvas.width,
-  //     ctx.canvas.height,
-  //     start,
-  //     end
-  //   );
-  //   offsetX = intersection.x + dirNormX * (metrics.width / 2 + edgePadding);
-  //   offsetY =
-  //     intersection.y + dirNormY * (metrics.height / 2 + edgePadding);
-  // } else {
-  //   // If 'end' point is inside, calculate the offset as usual
-  //   offsetX = end.x + dirNormX * (metrics.width / 2 + edgePadding);
-  //   offsetY = end.y + dirNormY * (metrics.height / 2 + edgePadding);
-  // }
-
-  // // Clamp the position within the canvas, taking into account the edgePadding
-  // const posX = Math.max(
-  //   Math.min(offsetX, ctx.canvas.width - metrics.width / 2 - edgePadding),
-  //   metrics.width / 2 + edgePadding
-  // );
-  // const posY = Math.max(
-  //   Math.min(offsetY, ctx.canvas.height - metrics.height / 2 - edgePadding),
-  //   metrics.height / 2 + edgePadding
-  // );
-
-  // // Draw the background rectangle with textPadding
-  // ctx.fillStyle = "rgba(0,0,0,0.5)";
-  // ctx.fillRect(
-  //   posX - metrics.width / 2 - textPadding,
-  //   posY - metrics.height / 2 - textPadding,
-  //   metrics.width + 2 * textPadding,
-  //   metrics.height + 2 * textPadding
-  // );
-
-  // // Draw the text
-  // ctx.fillStyle = "white";
-  // ctx.fillText(text, posX, posY);
-
   /**
    * Draws a text string on a canvas context with a semi-transparent background.
    * The text is placed along the 'start' to 'end' line, keeping the text
@@ -303,6 +309,7 @@ export const createCanvasMapRenderer = (
   startCoords: RefObject<Coords | null>,
   endCoords: RefObject<Coords | null>,
   mouseCoords: RefObject<Coords>,
+  isUsingTouch: RefObject<boolean>,
   gameMode: MapGameMode
 ) => {
   if (!canvasRef.current) return null;
@@ -345,7 +352,12 @@ export const createCanvasMapRenderer = (
       (gameMode.gridMeters / gameMode.gridPixelSize) * pixelDistance;
 
     const distanceText = `${Math.round(meterDistance)}m`;
-    drawText(ctx, start, end, distanceText);
+
+    if (isUsingTouch.current) {
+      drawTextAheadOfEnd(ctx, start, end, distanceText);
+    } else {
+      drawTextRightOfEnd(ctx, start, end, distanceText);
+    }
   }
 
   let disposed = false;
