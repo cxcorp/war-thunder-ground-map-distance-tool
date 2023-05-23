@@ -62,10 +62,29 @@ const useMouseDragging = (dragTargetRef: React.RefObject<HTMLElement>) => {
   const handleTouchStart = useCallback(
     (e: React.TouchEvent<HTMLElement>) => {
       if (!dragTargetRef.current) return;
-      isDragging.current = true;
+      isDragging.current = false;
       const canvasPos = dragTargetRef.current.getBoundingClientRect();
 
+      if (e.touches.length > 1) {
+        const start = e.touches[0];
+        const end = e.touches[1];
+
+        if (!startCoords.current) {
+          startCoords.current = { x: 0, y: 0 };
+        }
+        startCoords.current.x = start.clientX - canvasPos.left;
+        startCoords.current.y = start.clientY - canvasPos.top;
+
+        if (!endCoords.current) {
+          endCoords.current = { x: 0, y: 0 };
+        }
+        endCoords.current.x = end.clientX - canvasPos.left;
+        endCoords.current.y = end.clientY - canvasPos.top;
+        return;
+      }
+
       const touch = e.touches[0];
+
       const x = touch.clientX - canvasPos.left;
       const y = touch.clientY - canvasPos.top;
       if (startCoords.current) {
@@ -75,9 +94,7 @@ const useMouseDragging = (dragTargetRef: React.RefObject<HTMLElement>) => {
         startCoords.current = { x, y };
       }
 
-      if (endCoords.current) {
-        endCoords.current = null;
-      }
+      endCoords.current = null;
     },
     [dragTargetRef]
   );
@@ -95,7 +112,27 @@ const useMouseDragging = (dragTargetRef: React.RefObject<HTMLElement>) => {
   const handleParentTouchMove = useCallback(
     (e: React.TouchEvent<HTMLElement>) => {
       if (!dragTargetRef.current) return;
+      isDragging.current = true;
       const canvasPos = dragTargetRef.current.getBoundingClientRect();
+
+      if (e.touches.length > 1) {
+        const start = e.touches[0];
+        const end = e.touches[1];
+
+        if (!startCoords.current) {
+          startCoords.current = { x: 0, y: 0 };
+        }
+        startCoords.current.x = start.clientX - canvasPos.left;
+        startCoords.current.y = start.clientY - canvasPos.top;
+
+        if (!endCoords.current) {
+          endCoords.current = { x: 0, y: 0 };
+        }
+        endCoords.current.x = end.clientX - canvasPos.left;
+        endCoords.current.y = end.clientY - canvasPos.top;
+        return;
+      }
+
       const touch = e.touches[0];
       mouseCoords.current.x = touch.clientX - canvasPos.left;
       mouseCoords.current.y = touch.clientY - canvasPos.top;
@@ -129,20 +166,7 @@ const useMouseDragging = (dragTargetRef: React.RefObject<HTMLElement>) => {
 
   useEffect(() => {
     function handleTouchEnd(e: TouchEvent) {
-      if (!dragTargetRef.current) return;
-      if (!isDragging.current) {
-        startCoords.current = null;
-        return;
-      }
       isDragging.current = false;
-
-      const { x, y } = mouseCoords.current;
-      if (endCoords.current) {
-        endCoords.current.x = x;
-        endCoords.current.y = y;
-      } else {
-        endCoords.current = { x, y };
-      }
     }
 
     document.addEventListener("touchend", handleTouchEnd, { passive: true });
@@ -151,7 +175,7 @@ const useMouseDragging = (dragTargetRef: React.RefObject<HTMLElement>) => {
       document.removeEventListener("touchend", handleTouchEnd);
       document.removeEventListener("touchcancel", handleTouchEnd);
     };
-  }, [dragTargetRef, mouseCoords]);
+  }, [dragTargetRef, isDragging]);
 
   return useMemo(
     () => ({
