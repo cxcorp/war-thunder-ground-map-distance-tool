@@ -205,52 +205,6 @@ function drawTextRightOfEnd(
 
   ctx.fillStyle = "white";
   ctx.fillText(text, posX, posY);
-
-  // const metrics = getTextBBox(ctx, text);
-  // const edgePadding = 20;
-  // const textPadding = 5;
-
-  // // Offset the X position by the width of the text box plus edgePadding
-  // let offsetX = end.x + metrics.width / 2 + edgePadding;
-
-  // // Y position remains the same
-  // let offsetY = end.y;
-
-  // if (
-  //   end.x < 0 ||
-  //   end.y < 0 ||
-  //   end.x > ctx.canvas.width ||
-  //   end.y > ctx.canvas.height
-  // ) {
-  //   const intersection = liangBarsky(
-  //     ctx.canvas.width,
-  //     ctx.canvas.height,
-  //     start,
-  //     end
-  //   );
-  //   offsetX = intersection.x + metrics.width / 2 + edgePadding;
-  //   offsetY = intersection.y;
-  // }
-
-  // const posX = Math.max(
-  //   Math.min(offsetX, ctx.canvas.width - metrics.width / 2 - edgePadding),
-  //   metrics.width / 2 + edgePadding
-  // );
-  // const posY = Math.max(
-  //   Math.min(offsetY, ctx.canvas.height - metrics.height / 2 - edgePadding),
-  //   metrics.height / 2 + edgePadding
-  // );
-
-  // ctx.fillStyle = "rgba(0,0,0,0.5)";
-  // ctx.fillRect(
-  //   posX - metrics.width / 2 - textPadding,
-  //   posY - metrics.height / 2 - textPadding,
-  //   metrics.width + 2 * textPadding,
-  //   metrics.height + 2 * textPadding
-  // );
-
-  // ctx.fillStyle = "white";
-  // ctx.fillText(text, posX, posY);
 }
 
 function drawLineFromStartToEnd(
@@ -304,6 +258,37 @@ function drawEndCircle(ctx: CanvasRenderingContext2D, end: Coords) {
   ctx.fill();
 }
 
+function easeOutExpo(x: number): number {
+  return x === 1 ? 1 : 1 - Math.pow(2, -10 * x);
+}
+
+function offsetEndTowardsLineDirection(
+  start: Coords,
+  end: Coords,
+  px: number
+): Coords {
+  // Calculate the direction of the line from start to end
+  const dirX = end.x - start.x;
+  const dirY = end.y - start.y;
+
+  // Normalize the direction
+  const len = Math.sqrt(dirX * dirX + dirY * dirY);
+  const dirNormX = dirX / len;
+  const dirNormY = dirY / len;
+
+  // Normalize px by line length/image width
+  const lineLengthNorm = Math.max(
+    0,
+    Math.min(1, Math.hypot(end.x - start.x, end.y - start.y) / 532)
+  );
+  const pxMultiplier = easeOutExpo(lineLengthNorm);
+
+  return {
+    x: end.x + dirNormX * px * pxMultiplier,
+    y: end.y + dirNormY * px * pxMultiplier,
+  };
+}
+
 export const createCanvasMapRenderer = (
   canvasRef: RefObject<HTMLCanvasElement | null>,
   startCoords: RefObject<Coords | null>,
@@ -332,11 +317,15 @@ export const createCanvasMapRenderer = (
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
     const start = startCoords.current;
-    const end = endCoords.current ?? mouseCoords.current;
+    const endOriginal = (endCoords.current ?? mouseCoords.current)!;
 
-    if (!start || !end) {
+    if (!start || !endOriginal) {
       return;
     }
+
+    const end = isUsingTouch.current
+      ? offsetEndTowardsLineDirection(start, endOriginal, 50)
+      : endOriginal;
 
     const pixelDistance = Math.hypot(end.x - start.x, end.y - start.y);
     if (pixelDistance <= 5) {
