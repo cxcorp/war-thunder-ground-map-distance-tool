@@ -1,0 +1,20 @@
+.container {
+  user-select: none;
+}
+
+.imageContainer {
+  display: block;
+  width: 532px;
+  height: 532px;
+  position: relative;
+}
+
+.mapImage {
+  position: absolute;
+  z-index: 1;
+}
+
+.mapCanvas {
+  position: relative;
+  z-index: 2;
+}
